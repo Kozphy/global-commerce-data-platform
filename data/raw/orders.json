@@ -1,0 +1,92 @@
+[
+  {
+    "order_id": "O1001",
+    "customer_id": "C001",
+    "order_ts": "2024-07-01T10:15:00Z",
+    "quantity": 2,
+    "unit_price": 49.99,
+    "currency": "USD",
+    "product_sku": "SKU-A1"
+  },
+  {
+    "order_id": "O1002",
+    "customer_id": "C002",
+    "order_ts": "2024-07-01T14:20:00Z",
+    "quantity": 1,
+    "unit_price": 120.00,
+    "currency": "GBP",
+    "product_sku": "SKU-B2"
+  },
+  {
+    "order_id": "O1003",
+    "customer_id": "C001",
+    "order_ts": "2024-07-02T09:00:00Z",
+    "quantity": 3,
+    "unit_price": 25.50,
+    "currency": "USD",
+    "product_sku": "SKU-C3"
+  },
+  {
+    "order_id": "O1004",
+    "customer_id": "C003",
+    "order_ts": "2024-07-03T16:45:00Z",
+    "quantity": 1,
+    "unit_price": 89.00,
+    "currency": "EUR",
+    "product_sku": "SKU-A1"
+  },
+  {
+    "order_id": "O1005",
+    "customer_id": "C004",
+    "order_ts": "2024-07-04T11:30:00Z",
+    "quantity": 5,
+    "unit_price": 15.00,
+    "currency": "MXN",
+    "product_sku": "SKU-D4"
+  },
+  {
+    "order_id": "O1006",
+    "customer_id": "C005",
+    "order_ts": "2024-07-05T08:10:00Z",
+    "quantity": 2,
+    "unit_price": 199.99,
+    "currency": "SGD",
+    "product_sku": "SKU-E5"
+  },
+  {
+    "order_id": "O1007",
+    "customer_id": "C006",
+    "order_ts": "2024-07-06T13:00:00Z",
+    "quantity": 1,
+    "unit_price": 59.99,
+    "currency": "USD",
+    "product_sku": "SKU-B2"
+  },
+  {
+    "order_id": "O1008",
+    "customer_id": "C007",
+    "order_ts": "2024-07-07T17:25:00Z",
+    "quantity": 4,
+    "unit_price": 32.50,
+    "currency": "EUR",
+    "product_sku": "SKU-C3"
+  },
+  {
+    "order_id": "O1009",
+    "customer_id": "C008",
+    "order_ts": "2024-07-08T06:40:00Z",
+    "quantity": 2,
+    "unit_price": 75.00,
+    "currency": "JPY",
+    "product_sku": "SKU-A1"
+  },
+  {
+    "order_id": "O1010",
+    "customer_id": "C002",
+    "order_ts": "2024-07-09T19:55:00Z",
+    "quantity": 1,
+    "unit_price": 210.00,
+    "currency": "GBP",
+    "product_sku": "SKU-E5"
+  }
+]

@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.DS_Store
+Thumbs.db
+
+# Pipeline outputs (keep source data)
+data/bronze/
+data/silver/
+data/gold/
+data/state/
+data/quality/
+*.duckdb
+*.duckdb.wal
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Airflow local
+airflow/logs/
+airflow/airflow.db
+airflow/airflow.cfg
+
+# OS
+desktop.ini
