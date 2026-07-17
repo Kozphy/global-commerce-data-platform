@@ -1,0 +1,23 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  banking-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.banking
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      DBAI_MODEL_PROVIDER: local
+    ports:
+      - "8010:8010"
+    depends_on:
+      - qdrant
+
+volumes:
+  qdrant_data:
