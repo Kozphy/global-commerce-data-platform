@@ -28,5 +28,8 @@ jobs:
       - name: Pytest
         run: pytest -q
 
-      - name: Pipeline smoke run
+      - name: Commerce pipeline smoke run
         run: PYTHONPATH=src python -m pipeline.run
+
+      - name: Digital banking pipeline smoke run
+        run: PYTHONPATH=src python -m banking_pipeline.run
