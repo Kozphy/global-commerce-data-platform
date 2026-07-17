@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -36,7 +36,7 @@ class AuditChain:
         with self._lock:
             rows = self._read_raw()
             previous_hash = rows[-1]["record_hash"] if rows else "GENESIS"
-            created_at = datetime.now(timezone.utc)
+            created_at = datetime.now(UTC)
             body = {
                 "sequence": len(rows) + 1,
                 "request_id": request_id,
