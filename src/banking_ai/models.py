@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -62,7 +62,7 @@ class AssistResponse(BaseModel):
     evidence: list[Evidence] = Field(default_factory=list)
     customer_features: CustomerFeatures | None = None
     model_provider: str
-    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class AuditRecord(BaseModel):
