@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from banking_ai.models import Evidence
 
-
 BASE_NODES = [
     "Digital Events",
     "Bronze/Silver/Gold ETL",
