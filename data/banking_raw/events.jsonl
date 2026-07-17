@@ -1,0 +1,8 @@
+{"event_id":"E001","customer_id":"C001","event_ts":"2026-07-15T08:10:00Z","event_type":"login_success","channel":"mobile","session_id":"S001","metadata":{"device":"known"}}
+{"event_id":"E002","customer_id":"C001","event_ts":"2026-07-15T08:14:00Z","event_type":"product_view","channel":"mobile","session_id":"S001","metadata":{"product":"time_deposit"}}
+{"event_id":"E003","customer_id":"C001","event_ts":"2026-07-16T09:00:00Z","event_type":"transfer_completed","channel":"mobile","session_id":"S002","metadata":{"amount":12000,"currency":"TWD"}}
+{"event_id":"E004","customer_id":"C002","event_ts":"2026-07-16T05:00:00Z","event_type":"device_changed","channel":"mobile","session_id":"S010","metadata":{"device":"new"}}
+{"event_id":"E005","customer_id":"C002","event_ts":"2026-07-16T05:05:00Z","event_type":"login_failed","channel":"mobile","session_id":"S010","metadata":{}}
+{"event_id":"E006","customer_id":"C002","event_ts":"2026-07-16T05:06:00Z","event_type":"login_failed","channel":"mobile","session_id":"S010","metadata":{}}
+{"event_id":"E007","customer_id":"C002","event_ts":"2026-07-16T05:07:00Z","event_type":"login_failed","channel":"mobile","session_id":"S010","metadata":{}}
+{"event_id":"E008","customer_id":"C002","event_ts":"2026-07-16T07:30:00Z","event_type":"transfer_completed","channel":"web","session_id":"S011","metadata":{"amount":160000,"currency":"TWD"}}
