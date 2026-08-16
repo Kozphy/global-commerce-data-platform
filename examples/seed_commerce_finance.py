@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from commerce_finance import finance_control_checks, initialize_commerce_finance, reconcile_order
 from pipeline.config import get_settings
 from pipeline.warehouse import connect, initialize_warehouse
-from commerce_finance import finance_control_checks, initialize_commerce_finance, reconcile_order
 
 
 def main() -> None:
