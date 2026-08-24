@@ -7,9 +7,9 @@ inspect the ranking logic, reproduce experiments, and compare baselines.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from math import sqrt
-from typing import Iterable
 
 Interaction = tuple[str, str]
 
@@ -20,7 +20,7 @@ class PopularityRecommender:
 
     item_counts: Counter[str] | None = None
 
-    def fit(self, interactions: Iterable[Interaction]) -> "PopularityRecommender":
+    def fit(self, interactions: Iterable[Interaction]) -> PopularityRecommender:
         self.item_counts = Counter(item for _, item in interactions)
         return self
 
@@ -38,7 +38,7 @@ class UserItemRecommender:
 
     user_items: dict[str, set[str]] | None = None
 
-    def fit(self, interactions: Iterable[Interaction]) -> "UserItemRecommender":
+    def fit(self, interactions: Iterable[Interaction]) -> UserItemRecommender:
         mapping: dict[str, set[str]] = defaultdict(set)
         for user_id, item_id in interactions:
             mapping[user_id].add(item_id)
