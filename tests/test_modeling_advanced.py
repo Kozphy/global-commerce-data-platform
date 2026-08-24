@@ -1,5 +1,5 @@
 from modeling.experiments import append_experiment, run_grid_search
-from modeling.matrix_factorization import MFConfig, MatrixFactorizationRecommender
+from modeling.matrix_factorization import MatrixFactorizationRecommender, MFConfig
 from modeling.temporal import temporal_split
 
 
