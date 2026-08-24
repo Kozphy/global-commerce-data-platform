@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import math
 import random
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Iterable, Mapping
 
 
 @dataclass
@@ -38,7 +38,7 @@ class MatrixFactorizationRecommender:
         user_key: str = "user_id",
         item_key: str = "item_id",
         rating_key: str = "rating",
-    ) -> "MatrixFactorizationRecommender":
+    ) -> MatrixFactorizationRecommender:
         data = [(str(r[user_key]), str(r[item_key]), float(r[rating_key])) for r in rows]
         if not data:
             raise ValueError("training data cannot be empty")
