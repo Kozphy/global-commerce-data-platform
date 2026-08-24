@@ -1,20 +1,23 @@
-# Global Commerce Data Platform
+# Global Commerce Decision Science Platform
 
-Portfolio ETL/ELT project for a **Data Engineering Intern** role: multi-source ingestion, Bronze–Silver–Gold architecture, data-quality contracts, DuckDB star-schema warehouse, FastAPI serving, optional Airflow orchestration, Docker, and CI.
+Portfolio project for **Data Scientist / Decision Science** roles in digital commerce. It combines a production-minded analytics foundation with an inspectable recommendation-modeling layer: multi-source ingestion, Bronze–Silver–Gold processing, data-quality contracts, DuckDB marts, recommendation baselines, ranking evaluation, lightweight model monitoring, FastAPI serving, Docker, tests, and CI.
 
-> **Implemented here (local/demo):** Python pipelines, CSV/JSON/REST adapters, DuckDB, FastAPI, Airflow DAG (optional), Docker Compose, Pytest, Ruff, GitHub Actions.  
-> **Not implemented (future only):** AWS/Azure/GCP production deployment, Snowflake, Kafka, Spark, managed orchestration in the cloud.
+> **Implemented here (local/demo):** Python pipelines, CSV/JSON/REST adapters, DuckDB, FastAPI, Airflow DAG (optional), Docker Compose, Pytest, Ruff, GitHub Actions, popularity recommendation, user-based collaborative filtering, Precision@K / Recall@K / NDCG@K / MRR@K, prediction/latency/feature-quality monitoring primitives.  
+> **Not implemented:** production cloud deployment, distributed recommender training, online A/B testing, automated retraining, feature store, model registry service, Snowflake, Kafka, Spark.
 
 ---
 
 ## 1. Business problem
 
-A fictional global commerce team needs a reliable daily analytics foundation:
+A fictional global commerce team needs both reliable analytics data and a reproducible foundation for customer decision models:
 
-- Ingest customers (CSV) and orders (JSON, optional REST)
-- Enforce data contracts before analytics
-- Publish a star-schema warehouse for Power BI / API consumers
-- Support **incremental** loads without duplicating facts on reruns
+- Ingest customers and orders from CSV/JSON/REST sources.
+- Enforce data contracts before analytics or modeling.
+- Publish a star-schema warehouse for BI/API consumers.
+- Support incremental loads without duplicating facts.
+- Compare recommendation approaches against an explicit popularity baseline.
+- Evaluate ranked recommendations with standard offline metrics.
+- Detect material changes in prediction behavior, runtime latency, and feature quality.
 
 ---
 
@@ -23,228 +26,148 @@ A fictional global commerce team needs a reliable daily analytics foundation:
 ```text
 CSV customers + JSON/REST orders
             ↓
-Bronze immutable raw snapshots (Parquet per run)
+Bronze immutable raw snapshots
             ↓
-Incremental filter (high-water mark) + validation
+Incremental filter + validation
             ↓
-Silver Parquet datasets
+Silver conformed datasets
             ↓
 DuckDB Gold warehouse
             ↓
-dim_customer | fact_order | mart_daily_sales | mart_customer_value
+Feature / interaction views
             ↓
-FastAPI  /  Power BI (v_powerbi_sales)
+Popularity baseline ─────┐
+Collaborative filtering ├─→ Ranking evaluation
+                        │      Precision@K
+                        │      Recall@K
+                        │      NDCG@K
+                        │      MRR@K
+                        ↓
+                 Serving / scoring
+                        ↓
+      Prediction + latency + feature-quality monitoring
+                        ↓
+               FastAPI / Power BI
 ```
 
 ---
 
-## 3. Repository structure
+## 3. Data-science layer
+
+### Recommendation baselines
+
+`src/modeling/recommender.py` contains two deliberately explainable baselines:
+
+1. **PopularityRecommender** — a user-agnostic baseline that establishes the minimum bar a personalized model should beat.
+2. **UserItemRecommender** — user-based collaborative filtering using cosine similarity over implicit item interactions.
+
+The project keeps these baselines transparent because a strong Data Scientist should be able to explain *why* a more complex model is worth deploying.
+
+### Offline evaluation
+
+`src/modeling/evaluation.py` implements:
+
+- Precision@K
+- Recall@K
+- NDCG@K
+- MRR@K
+
+These metrics make recommendation experiments comparable and prevent the portfolio from relying on vague claims such as “the model performs well.”
+
+### Model monitoring
+
+`src/modeling/monitoring.py` summarizes serving behavior and produces explicit alert flags for:
+
+- prediction distribution drift
+- inference latency regression
+- feature missing-rate deterioration
+
+Thresholds are configurable and intentionally simple enough to audit. This is a local demonstration of model-lifecycle thinking, **not** a claim of production MLOps infrastructure.
+
+---
+
+## 4. Repository structure
 
 ```text
-├── airflow/dags/          # Optional Airflow DAG (calls pipeline modules)
-├── data/raw/              # Source CSV + JSON (committed sample data)
-├── examples/              # Mock REST API for local REST ingestion demos
+├── airflow/dags/          # Optional Airflow orchestration
+├── data/raw/              # Sample source data
+├── examples/              # Mock REST API
 ├── src/
 │   ├── api/               # FastAPI app
+│   ├── modeling/          # Recommendation, evaluation, monitoring
 │   └── pipeline/          # Ingest, validate, transform, warehouse, run
-├── tests/                 # Unit + integration tests (temp dirs/DBs)
+├── tests/                 # Data + modeling tests
 ├── Dockerfile
 ├── docker-compose.yml
 ├── pyproject.toml
-├── requirements.txt
 └── .github/workflows/ci.yml
 ```
 
-Runtime outputs (gitignored): `data/bronze`, `data/silver`, `data/gold`, `data/state`, `data/quality`.
+---
+
+## 5. Data flow and controls
+
+1. Ingest customers CSV + orders JSON (optional REST merge).
+2. Write immutable Bronze snapshots per `run_id`.
+3. Apply incremental high-water-mark filtering.
+4. Validate contracts and write rejects with reasons.
+5. Publish accepted Silver Parquet datasets.
+6. Upsert Gold facts/dimensions into DuckDB and rebuild marts.
+7. Advance watermarks only after successful Gold loading.
+8. Build interaction sets for recommendation experiments.
+9. Compare personalized recommendations with the popularity baseline.
+10. Record offline ranking metrics and monitor serving characteristics.
 
 ---
 
-## 4. Data flow
+## 6. Existing data-engineering strengths
 
-1. **Ingest** customers CSV + orders JSON (optional REST merge)
-2. **Bronze** snapshot written per `run_id`
-3. **Incremental filter** keeps rows newer than last successful watermark
-4. **Validate** contracts; write rejects + quality report
-5. **Silver** Parquet for accepted rows
-6. **Gold** upsert into DuckDB; refresh marts; store `pipeline_run_metadata`
-7. **Advance watermark only on success**
+The platform retains the original production-minded controls:
 
----
+- duplicate primary keys fail fast
+- invalid rows are rejected rather than silently coerced
+- failed runs do not advance watermarks
+- warehouse loading is idempotent
+- marts are reproducible from accepted facts
+- pipeline run metadata is stored for traceability
 
-## 5. Data contracts
-
-### Customers
-
-| Rule | Behavior |
-|------|----------|
-| `customer_id` required + unique | Duplicate PK → pipeline **fails** |
-| Email plausible (`a@b.c`) | Soft reject |
-| Country non-empty | Soft reject |
-| `created_at` valid timestamp | Soft reject |
-| Required fields present | Soft reject |
-
-### Orders
-
-| Rule | Behavior |
-|------|----------|
-| `order_id` required + unique | Duplicate PK → pipeline **fails** |
-| `customer_id` exists in customers (or prior `dim_customer`) | Soft reject / fail if all rows orphaned |
-| `order_ts` valid | Soft reject |
-| `quantity` > 0 | Soft reject |
-| `unit_price` ≥ 0 | Soft reject |
-| Recognized revenue ≥ 0 | Soft reject |
-| `currency` = 3-letter ISO-like code | Soft reject |
-
-Rejected rows are written under `data/quality/` with reasons; they are **not** silently coerced.
+Warehouse objects include `dim_customer`, `fact_order`, `mart_daily_sales`, `mart_customer_value`, `v_powerbi_sales`, and `pipeline_run_metadata`.
 
 ---
 
-## 6. Table grains
+## 7. Experiment design
 
-| Object | Grain |
-|--------|-------|
-| `dim_customer` | 1 row per `customer_id` |
-| `fact_order` | 1 row per `order_id` |
-| `mart_daily_sales` | 1 row per `order_date` |
-| `mart_customer_value` | 1 row per `customer_id` |
-| `v_powerbi_sales` | 1 row per (`order_date`, `customer_id`) |
-| `pipeline_run_metadata` | 1 row per `run_id` |
+A recommended interview experiment is:
 
----
+```text
+Temporal train interactions
+        ↓
+Popularity baseline
+        ↓
+Collaborative-filtering candidate
+        ↓
+Evaluate on future held-out interactions
+        ↓
+Precision@K / Recall@K / NDCG@K / MRR@K
+        ↓
+Choose model only if it beats baseline
+        ↓
+Serve / monitor prediction behavior and latency
+```
 
-## 7. Incremental loading design
-
-- **Orders watermark key:** `order_ts` (ISO-8601)
-- **Customers watermark key:** `created_at` (ISO-8601)
-- Stored in `data/state/high_water_marks.json`
-- First successful run = **full load** (empty watermarks)
-- Subsequent runs process only rows **strictly newer** than the watermark
-- Failed runs **do not** advance watermarks
-
-### Limitations
-
-- Late-arriving events with timestamps ≤ watermark are skipped
-- Out-of-order source clocks can miss rows
-- Soft-rejected rows never advance the cursor (by design)
+For a stronger future version, add matrix factorization or learning-to-rank, Optuna tuning, temporal cross-validation, experiment persistence, and confidence intervals. Those are **future work**, not currently claimed capabilities.
 
 ---
 
-## 8. Idempotency strategy
-
-- Warehouse loads use `INSERT OR REPLACE` on primary keys (`customer_id`, `order_id`)
-- Marts are fully rebuilt from facts each successful load
-- Re-running with unchanged sources yields **zero new accepted incremental rows** and **no duplicate facts**
-
----
-
-## 9. Data-quality rules
-
-See contracts above. Each run writes:
-
-- `data/quality/quality_<run_id>.md`
-- Optional reject Parquet files
-- Structured checks in run metadata + DuckDB `pipeline_run_metadata`
-
----
-
-## 10. Local setup
+## 8. Local setup
 
 ```bash
 python -m venv .venv
-# macOS/Linux
-source .venv/bin/activate
-# Windows PowerShell
-.\.venv\Scripts\Activate.ps1
-
+source .venv/bin/activate   # Windows: .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
 
----
-
-## 11. Windows PowerShell commands
-
-```powershell
-$env:PYTHONPATH = "src"
-python -m pipeline.run
-python -m uvicorn api.main:app --reload --port 8000
-ruff check src tests
-pytest -q
-```
-
----
-
-## 12. macOS / Linux commands
-
-```bash
-export PYTHONPATH=src
-python -m pipeline.run
-python -m uvicorn api.main:app --reload --port 8000
-ruff check src tests
-pytest -q
-```
-
----
-
-## 13. Docker
-
-```bash
-docker compose run --rm pipeline
-docker compose up api
-```
-
-API: http://localhost:8000/docs
-
-**Limitation:** Airflow is not bundled in Compose (keeps the demo lightweight). Use local Airflow or skip orchestration.
-
----
-
-## 14. Airflow (optional)
-
-1. Set `AIRFLOW_HOME` and add `airflow/dags` to your DAGs folder (or symlink).
-2. Ensure `PYTHONPATH` includes `src` (DAG also inserts repo `src` onto `sys.path`).
-3. Trigger manually — schedule is `None` (dev-safe).
-
-```bash
-airflow dags test global_commerce_pipeline 2024-07-01
-```
-
-Logical tasks: ingestion → validation → transformation → warehouse_loading → quality_verification → completion_reporting.  
-The **warehouse_loading** task runs the same tested `pipeline.run.run_pipeline` entrypoint (authoritative load + watermarks).
-
----
-
-## 15. API examples
-
-```bash
-curl http://127.0.0.1:8000/health
-curl http://127.0.0.1:8000/runs/latest
-curl "http://127.0.0.1:8000/metrics/daily-sales?limit=10"
-curl "http://127.0.0.1:8000/customers?country=US"
-curl http://127.0.0.1:8000/customers/C001
-curl http://127.0.0.1:8000/orders/O1001
-```
-
-Swagger UI: `/docs`
-
----
-
-## 16. REST ingestion demo (mocked, no paid API)
-
-```bash
-# Terminal 1
-PYTHONPATH=src python examples/mock_orders_api.py
-
-# Terminal 2
-# PowerShell: $env:GCDP_REST_ENABLED="true"
-export GCDP_REST_ENABLED=true
-PYTHONPATH=src python -m pipeline.run
-```
-
----
-
-## 17. Tests & CI
-
-CI (`.github/workflows/ci.yml`) runs:
+Run checks:
 
 ```bash
 ruff check src tests
@@ -252,66 +175,66 @@ pytest -q
 PYTHONPATH=src python -m pipeline.run
 ```
 
-Tests cover quality rules, idempotency, incremental load, failed-run watermark, mocked REST, API, and warehouse calcs — all using temporary directories/DBs.
+---
+
+## 9. Tests & CI
+
+CI runs linting, tests, and a pipeline smoke run. Tests cover data-quality rules, idempotency, incremental loading, failed-run watermark behavior, REST mocking, API behavior, warehouse calculations, recommendation behavior, ranking-metric bounds, and monitoring alerts.
 
 ---
 
-## 18. Power BI connection guidance
+## 10. 90-second Data Scientist interview demo
 
-1. Run the pipeline to create `data/gold/commerce.duckdb`
-2. In Power BI Desktop, use a DuckDB connector / ODBC, **or** export:
-   ```sql
-   COPY (SELECT * FROM v_powerbi_sales) TO 'sales.parquet' (FORMAT PARQUET);
-   ```
-3. Connect to view `v_powerbi_sales` (order date, customer, country, measures)
-
----
-
-## 19. Known limitations
-
-- Single-node DuckDB file warehouse (not a multi-user cloud warehouse)
-- Watermark incremental loading is timestamp-based (late data risk)
-- Airflow is optional and not production-hardened in this repo
-- Sample data is synthetic and small
+1. Explain the business problem: reliable commerce data plus customer decision models.
+2. Show Bronze → Silver → Gold and the data-quality / idempotency controls.
+3. Open `src/modeling/recommender.py` and explain why popularity is the baseline.
+4. Show collaborative filtering and describe the similarity assumption.
+5. Open `src/modeling/evaluation.py` and explain why NDCG matters for ranked lists.
+6. Run `pytest -q` to demonstrate reproducibility.
+7. Show `src/modeling/monitoring.py` and explain prediction drift vs runtime regression.
+8. State the limitations explicitly: local synthetic data, offline evaluation, no online A/B test or automated retraining yet.
 
 ---
 
-## 20. Future cloud migration path (not implemented)
+## 11. Job-description mapping
 
-1. Land Bronze in object storage (S3/ADLS/GCS)
-2. Orchestrate with managed Airflow / Step Functions / Composer
-3. Load Gold into Snowflake / BigQuery / Redshift
-4. Add schema registry + data contracts service
-5. Add CDC (e.g., Debezium/Kafka) for true event-time ingestion
-
----
-
-## 21. 90-second interview demo
-
-1. Show `data/raw` sources and architecture diagram in README  
-2. Run `PYTHONPATH=src python -m pipeline.run` — point at JSON logs + `run_id`  
-3. Re-run — show **no duplicate** `fact_order` rows + watermark file  
-4. Open DuckDB / API `/metrics/daily-sales` and `/docs`  
-5. Mention tests: incremental, watermark-on-failure, REST mock, quality contracts  
+| Data Scientist requirement | Evidence in this repository |
+|---|---|
+| Data cleansing / preprocessing | Bronze–Silver validation and reject handling |
+| Feature-ready data | Gold marts / interaction-ready warehouse layer |
+| Recommendation models | Popularity + user-based collaborative filtering |
+| Model evaluation | Precision@K, Recall@K, NDCG@K, MRR@K |
+| Iterative experimentation | Explicit baseline-versus-candidate design |
+| Model lifecycle awareness | Serving metrics + drift / latency / feature-quality alerts |
+| Python | Pipeline, API, modeling, testing |
+| SQL | DuckDB dimensional warehouse and marts |
+| E-commerce scenario | Customers, orders, customer-value and recommendation use cases |
+| Runtime stability | Latency-regression monitoring primitive |
 
 ---
 
-## 22. Five likely interview questions (strong answers)
+## 12. Known limitations
 
-1. **Why Bronze–Silver–Gold?**  
-   Bronze preserves immutable raw extracts for replay/audit; Silver holds cleaned conformed datasets; Gold is consumer-ready star schema/marts. Separation lets you reprocess without re-extracting when transforms change.
+- Synthetic, small-scale portfolio data rather than real high-volume transaction logs.
+- Collaborative filtering is a transparent baseline, not a state-of-the-art recommender.
+- No production feature store, experiment tracker, model registry, A/B testing, or retraining orchestration.
+- Single-node DuckDB rather than a multi-user cloud warehouse.
+- Timestamp watermarks can miss late-arriving data.
+- Airflow remains optional and is not production-hardened here.
 
-2. **How do you avoid duplicates on reruns?**  
-   Natural keys with idempotent `INSERT OR REPLACE`, plus incremental watermarks so unchanged sources contribute zero new rows. Marts rebuild from facts.
+These limitations are documented deliberately so the repository demonstrates engineering judgment rather than overstating production readiness.
 
-3. **What happens when a run fails midway?**  
-   Watermarks are advanced only after a successful gold load. Failed runs record metadata/status but leave the high-water mark unchanged so the next run reprocesses the same window.
+---
 
-4. **How do you validate data quality without a heavy framework?**  
-   Explicit contract functions, accepted vs rejected splits, rejection reasons, critical failures (duplicate PKs), and automated tests per rule — lightweight and easy to explain in interviews.
+## 13. Next upgrades
 
-5. **Why DuckDB here?**  
-   It is an embedded analytics engine ideal for portfolio/local demos: SQL star schemas, fast Parquet I/O, zero server ops. In production you would swap the gold layer for a cloud warehouse while keeping the same dimensional model.
+1. Add temporal train/validation/test splitting with leakage tests.
+2. Add matrix factorization / implicit-feedback model.
+3. Add Optuna hyperparameter optimization.
+4. Persist experiment metadata and model versions.
+5. Add feature-distribution metrics such as PSI / Jensen-Shannon divergence.
+6. Add an offline-to-online decision document defining A/B-test guardrails.
+7. Add business metrics such as revenue-per-session, conversion lift, coverage, novelty, and diversity.
 
 ---
 
