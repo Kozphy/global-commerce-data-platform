@@ -70,10 +70,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Model lifecycle tests
+      - name: Model lifecycle and business serving tests
         env:
           PYTHONPATH: src
-        run: pytest -q tests/test_modeling.py tests/test_modeling_advanced.py tests/test_model_monitoring.py
+        run: |
+          pytest -q \
+            tests/test_modeling.py \
+            tests/test_modeling_advanced.py \
+            tests/test_model_monitoring.py \
+            tests/test_model_serving_business.py
 
       - name: Compile source tree
         run: python -m compileall -q src
