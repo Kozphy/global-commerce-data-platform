@@ -5,11 +5,59 @@ on:
     branches: [main, master]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
-  test:
+  quality:
+    name: quality / python-${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ruff
+        run: ruff check src tests
+
+      - name: Pytest
+        env:
+          PYTHONPATH: src
+        run: pytest -q
+
+      - name: Pipeline smoke run
+        env:
+          PYTHONPATH: src
+        run: python -m pipeline.run
+
+  continuous-testing:
+    name: CT / model lifecycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -22,11 +70,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Ruff
-        run: ruff check src tests
+      - name: Model lifecycle tests
+        env:
+          PYTHONPATH: src
+        run: pytest -q tests/test_modeling.py tests/test_modeling_advanced.py tests/test_model_monitoring.py
 
-      - name: Pytest
-        run: pytest -q
-
-      - name: Pipeline smoke run
-        run: PYTHONPATH=src python -m pipeline.run
+      - name: Compile source tree
+        run: python -m compileall -q src
