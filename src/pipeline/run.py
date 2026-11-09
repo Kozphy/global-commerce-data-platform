@@ -44,6 +44,26 @@ def _max_ts(series: pd.Series) -> str | None:
     return max(values)
 
 
+def enforce_reject_rate(rejected: int, total: int, threshold: float) -> None:
+    """Fail a run when an enabled soft-reject limit is exceeded.
+
+    A zero threshold means disabled (the historical default). Thresholds
+    greater than zero are inclusive: a rate equal to the limit is allowed.
+    """
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("critical_reject_fail_threshold must be between 0 and 1")
+    if rejected < 0 or total < 0 or rejected > total:
+        raise ValueError("invalid row counts for reject-rate gate")
+    if threshold == 0.0 or total == 0:
+        return
+    reject_rate = rejected / total
+    if reject_rate > threshold:
+        raise PipelineError(
+            f"Reject rate {reject_rate:.2%} exceeds configured threshold {threshold:.2%} "
+            f"({rejected}/{total} rows rejected)"
+        )
+
+
 def run_pipeline(settings: Settings | None = None) -> PipelineRunRecord:
     """Execute one pipeline run with incremental loading and run metadata."""
     settings = settings or get_settings()
@@ -155,16 +175,10 @@ def run_pipeline(settings: Settings | None = None) -> PipelineRunRecord:
             asdict(c) for c in customer_result.checks + order_result.checks
         ]
 
-        # Fail on critical reject threshold (default: any critical schema issue already raised).
-        total_in = max(1, len(orders_inc) + len(customers_inc))
+        # Zero disables the optional soft-reject gate for backward compatibility.
+        total_in = len(orders_inc) + len(customers_inc)
         total_rej = customer_result.rejected_count + order_result.rejected_count
-        reject_rate = total_rej / total_in
-        if reject_rate > settings.critical_reject_fail_threshold and (
-            customer_result.rejected_count > 0 or order_result.rejected_count > 0
-        ):
-            # Soft rejects are allowed at threshold 1.0; at 0.0 we only fail if configured.
-            # Default threshold 0.0 means we do NOT fail solely on soft rejects.
-            pass
+        enforce_reject_rate(total_rej, total_in, settings.critical_reject_fail_threshold)
 
         write_quality_report(
             settings.quality_dir / f"quality_{run.run_id}.md",
