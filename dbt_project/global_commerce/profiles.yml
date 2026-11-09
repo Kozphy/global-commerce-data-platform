@@ -1,0 +1,8 @@
+global_commerce:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: '../../data/gold/commerce.duckdb'
+      extensions:
+        - parquet

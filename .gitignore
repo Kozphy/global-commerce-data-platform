@@ -40,5 +40,11 @@ airflow/logs/
 airflow/airflow.db
 airflow/airflow.cfg
 
+# dbt local artifacts
+dbt_project/**/target/
+dbt_project/**/dbt_packages/
+dbt_project/**/logs/
+dbt_project/**/.user.yml
+
 # OS
 desktop.ini

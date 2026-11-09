@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: dim_customer
+    description: "Customer dimension"
+    columns:
+      - name: customer_id
+        tests:
+          - unique
+          - not_null
+      - name: email
+        tests:
+          - not_null
+
+  - name: fact_order
+    description: "Order fact table"
+    columns:
+      - name: order_id
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_id
+      - name: quantity
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0.01
+      - name: gross_sales
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0

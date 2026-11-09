@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: silver
+    description: "Validated commerce data in Parquet format"
+    tables:
+      - name: customers
+        description: "Enriched customer records"
+        meta:
+          external_location: "read_parquet('../../data/silver/customers.parquet')"
+      - name: orders
+        description: "Enriched order records"
+        meta:
+          external_location: "read_parquet('../../data/silver/orders.parquet')"
